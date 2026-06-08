@@ -1,0 +1,32 @@
+# -----------------------------------------------------------------
+# Prettier 忽略清单
+# 这些文件不会被格式化，即使手动执行 prettier --write
+# -----------------------------------------------------------------
+
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+build/
+
+# 非 JS 项目文件（Prettier 无法解析）
+*.log
+*.lock
+package-lock.json
+
+# Markdown 暂不格式化（如有需要可以移除）
+# *.md
+
+# 环境变量模板——保持原样，避免格式化破坏注释对齐
+.env.example
+
+# 自动生成的 Swagger / OpenAPI JSON
+swagger.json
+openapi.json
+
+# 覆盖率报告
+coverage/
+
+# CI/CD 配置
+.github/
