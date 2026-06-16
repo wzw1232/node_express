@@ -1,0 +1,37 @@
+{
+  // ============================================================================
+  // VS Code 工作区设置 —— 保存时自动格式化 + ESLint 自动修复
+  // ============================================================================
+
+  // ---- 全局：保存时自动格式化 ----
+  "editor.formatOnSave": true,
+
+  // ---- Prettier 作为默认格式化器 ----
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // ---- JavaScript / CommonJS 专用 ----
+  "[javascript]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // ---- 保存时 ESLint 自动修复（处理 Prettier 不覆盖的规则） ----
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // ---- ESLint 校验范围 ----
+  "eslint.validate": [
+    "javascript",
+    "json",
+    "jsonc"
+  ]
+}

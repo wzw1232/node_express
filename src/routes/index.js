@@ -2,6 +2,7 @@
 const { getHealth, getWelcome } = require('../controllers/baseController');
 const authRoutes = require('./authRoutes');
 const studentRoutes = require('./studentRoutes');
+const aiRoutes = require('./aiRoutes');
 const { getUserInfo, getMockData, getMockMapData } = require('../controllers/userInfoController');
 
 const router = express.Router();
@@ -46,5 +47,6 @@ router.get('/api/dashboard/data', getMockData);
 router.get('/api/dashboard-map/data', getMockMapData);
 router.use('/api/auth', authRoutes);
 router.use('/api/students', studentRoutes);
+router.use('/api/ai', aiRoutes);
 
 module.exports = router;
