@@ -42,11 +42,13 @@ async function chatStream(req, res, next) {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // 禁用 Nginx 缓冲
+  res.flushHeaders(); // 立即发送响应头，防止代理/浏览器缓冲
 
   // --- 客户端断开时中止 ---
   let aborted = false;
-  req.on('close', () => {
+  res.on('close', () => {
     aborted = true;
+    console.log('[AIController] 客户端断开连接');
   });
 
   try {
@@ -54,14 +56,17 @@ async function chatStream(req, res, next) {
 
     await aiService.chatStream(messages, options, (chunk) => {
       if (aborted) return;
-      // chunk 为 { type: 'content'|'reasoning', content: '文本片段' }
-      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      const line = `data: ${JSON.stringify(chunk)}\n\n`;
+      console.log('[AIController] SSE write:', chunk.type, chunk.content?.substring(0, 30));
+      res.write(line);
     });
 
     if (!aborted) {
+      console.log('[AIController] SSE 完成');
       res.write('data: [DONE]\n\n');
     }
   } catch (error) {
+    console.error('[AIController] 流错误:', error.message);
     // 流已开始时出错的兜底 —— 用 SSE 格式推送错误
     if (!aborted) {
       const errMsg = error instanceof Error ? error.message : 'AI 服务异常';
@@ -84,6 +89,7 @@ async function chatStream(req, res, next) {
  */
 async function chatSync(req, res, next) {
   try {
+    console.log(req.body, '请求参数');
     const { messages, ...options } = req.body;
     const result = await aiService.chat(messages, options);
     return ok(res, result, 'OK');

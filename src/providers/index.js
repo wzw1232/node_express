@@ -30,6 +30,11 @@ function getAIProvider() {
       cachedProvider = new ZhipuProvider();
       break;
     }
+    case 'deepseek': {
+      const DeepSeekProvider = require('./deepseekProvider');
+      cachedProvider = new DeepSeekProvider();
+      break;
+    }
     // 后续扩展示例：
     // case 'claude': {
     //   const ClaudeProvider = require('./claudeProvider');
@@ -37,7 +42,7 @@ function getAIProvider() {
     //   break;
     // }
     default:
-      throw new Error(`不支持的 AI_PROVIDER: ${providerName}。当前支持: openai, zhipu`);
+      throw new Error(`不支持的 AI_PROVIDER: ${providerName}。当前支持: openai, zhipu, deepseek`);
   }
 
   return cachedProvider;

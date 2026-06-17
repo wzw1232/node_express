@@ -1,44 +1,44 @@
 /**
- * @fileoverview 智谱 GLM Provider 实现
+ * @fileoverview DeepSeek Provider 实现
  *
  * @description
- * 智谱 AI 的 API 与 OpenAI 兼容（Base URL: https://open.bigmodel.cn/api/paas/v4/），
- * 因此复用 openai SDK 作为底层 HTTP 客户端，仅修改 baseURL 和 API Key。
+ * DeepSeek API 与 OpenAI 兼容（Base URL: https://api.deepseek.com），
+ * 复用 openai SDK 作为底层 HTTP 客户端。
  *
- * 智谱特有功能：
- *   - thinking: { type: 'enabled' }  启用深度思考模式
- *   - 流式 chunk 中可能包含 delta.reasoning_content（推理过程）
+ * DeepSeek 特有：
+ *   - deepseek-reasoner 模型会返回 delta.reasoning_content（推理过程）
+ *   - deepseek-chat 模型为标准对话模型
  *
  * 环境变量：
- *   GLM_API_KEY  — 智谱 API 密钥（必填）
- *   GLM_MODEL    — 默认模型，如 glm-4.7（可选，默认 glm-4.7）
+ *   DEEPSEEK_API_KEY  — DeepSeek API 密钥（必填）
+ *   DEEPSEEK_MODEL    — 默认模型（可选，默认 deepseek-chat）
  */
 
 const OpenAI = require('openai');
 const BaseProvider = require('./baseProvider');
 
-/** 智谱 AI 的 OpenAI 兼容 API 地址 */
-const ZHIHU_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4/';
+/** DeepSeek OpenAI 兼容 API 地址 */
+const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
 
-class ZhipuProvider extends BaseProvider {
+class DeepSeekProvider extends BaseProvider {
   constructor() {
     super();
-    const apiKey = process.env.GLM_API_KEY || '';
-    const defaultModel = process.env.GLM_MODEL || 'glm-4.7';
+    const apiKey = process.env.DEEPSEEK_API_KEY || '';
+    const defaultModel = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 
     if (!apiKey) {
-      console.warn('[ZhipuProvider] GLM_API_KEY 未配置，请求将失败');
+      console.warn('[DeepSeekProvider] DEEPSEEK_API_KEY 未配置，请求将失败');
     }
 
-    console.log('[ZhipuProvider] 初始化完成', {
-      baseURL: ZHIHU_BASE_URL,
+    console.log('[DeepSeekProvider] 初始化完成', {
+      baseURL: DEEPSEEK_BASE_URL,
       defaultModel,
       hasApiKey: !!apiKey,
     });
 
     this.client = new OpenAI({
       apiKey,
-      baseURL: ZHIHU_BASE_URL,
+      baseURL: DEEPSEEK_BASE_URL,
     });
     this.defaultModel = defaultModel;
   }
@@ -47,7 +47,7 @@ class ZhipuProvider extends BaseProvider {
   // 非流式对话
   // ---------------------------------------------------------------------------
   async chat(messages, options = {}) {
-    const { model = this.defaultModel, temperature, maxTokens, thinking } = options;
+    const { model = this.defaultModel, temperature, maxTokens } = options;
 
     const params = {
       model,
@@ -56,15 +56,9 @@ class ZhipuProvider extends BaseProvider {
       max_tokens: maxTokens,
     };
 
-    // 智谱特有：深度思考模式
-    if (thinking) {
-      params.thinking = thinking;
-    }
-
-    console.log('[ZhipuProvider] chat 请求参数:', {
+    console.log('[DeepSeekProvider] chat 请求参数:', {
       model: params.model,
       msgCount: params.messages?.length,
-      hasThinking: !!params.thinking,
       stream: false,
     });
 
@@ -75,6 +69,7 @@ class ZhipuProvider extends BaseProvider {
 
       return {
         content: choice.content ?? '',
+        // deepseek-reasoner 模型返回推理过程
         reasoningContent: choice.reasoning_content ?? undefined,
         model: response.model,
         usage: response.usage
@@ -86,7 +81,7 @@ class ZhipuProvider extends BaseProvider {
           : undefined,
       };
     } catch (error) {
-      console.error('[ZhipuProvider] chat 调用失败:', {
+      console.error('[DeepSeekProvider] chat 调用失败:', {
         status: error.status,
         code: error.error?.code,
         message: error.message,
@@ -100,7 +95,7 @@ class ZhipuProvider extends BaseProvider {
   // 流式对话
   // ---------------------------------------------------------------------------
   async chatStream(messages, options = {}, onChunk) {
-    const { model = this.defaultModel, temperature, maxTokens, thinking } = options;
+    const { model = this.defaultModel, temperature, maxTokens } = options;
 
     const params = {
       model,
@@ -110,15 +105,9 @@ class ZhipuProvider extends BaseProvider {
       stream: true,
     };
 
-    // 智谱特有：深度思考模式
-    if (thinking) {
-      params.thinking = thinking;
-    }
-
-    console.log('[ZhipuProvider] chatStream 请求参数:', {
+    console.log('[DeepSeekProvider] chatStream 请求参数:', {
       model: params.model,
       msgCount: params.messages?.length,
-      hasThinking: !!params.thinking,
       stream: true,
     });
 
@@ -126,7 +115,7 @@ class ZhipuProvider extends BaseProvider {
     try {
       stream = await this.client.chat.completions.create(params);
     } catch (error) {
-      console.error('[ZhipuProvider] chatStream 创建失败:', {
+      console.error('[DeepSeekProvider] chatStream 创建失败:', {
         status: error.status,
         code: error.error?.code,
         message: error.message,
@@ -152,7 +141,7 @@ class ZhipuProvider extends BaseProvider {
         const delta = chunk.choices?.[0]?.delta;
         if (!delta) continue;
 
-        // 深度思考模式下的推理过程（优先推送）
+        // deepseek-reasoner 模型的推理过程
         if (delta.reasoning_content) {
           onChunk({
             type: 'reasoning',
@@ -169,14 +158,14 @@ class ZhipuProvider extends BaseProvider {
         }
       }
     } catch (error) {
-      console.error('[ZhipuProvider] chatStream 流中断:', {
+      console.error('[DeepSeekProvider] chatStream 流中断:', {
         message: error.message,
         finishModel,
       });
       throw error;
     }
 
-    console.log('[ZhipuProvider] chatStream 完成:', {
+    console.log('[DeepSeekProvider] chatStream 完成:', {
       model: finishModel,
       hasUsage: !!finishUsage,
     });
@@ -184,4 +173,4 @@ class ZhipuProvider extends BaseProvider {
   }
 }
 
-module.exports = ZhipuProvider;
+module.exports = DeepSeekProvider;
